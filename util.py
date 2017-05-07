@@ -7,27 +7,40 @@ import numpy as np
 import shutil
 
 
-def load_data(path):
+def load_data(path, size, is_train_flag):
     imgs = os.listdir(path)
     num = len(imgs)
     map_dict = {"n04971313":0, "n11950345":1, "n11978233":2, "n12306717":3, "n12649065":4, "n12421683":5}
 
-    size = 80
-    data = np.empty((num, size, size, 1), dtype="float32")
-    label = np.empty((num,), dtype="uint8")
+    label_num = {"n04971313":0, "n11950345":0, "n11978233":0, "n12306717":0, "n12649065":0, "n12421683":0}
+    if is_train_flag:
+        max_num = 540
+    else:
+        max_num = 130
+
+    data = np.empty((max_num * 6, size, size, 3), dtype="float32")
+    label = np.empty((max_num * 6,), dtype="uint8")
+    j = 0
 
     for i in range(num):
         try:
-            img = Image.open(path + imgs[i]).convert('L')
-            # arr = np.asarray(img, dtype="float32")
+            type = imgs[i].split('_')[0]
+            if label_num[type] >= max_num:
+                continue
+
+            img = Image.open(path + imgs[i])
+            # img = Image.open(path + imgs[i]).convert('L')
             img = img.resize((size, size), PIL.Image.ANTIALIAS)
             arr = np.array(img, dtype="float32")
-            # arr = arr.reshape([size, size])
-            data[i, :, :, 0] = arr
-            label[i] = map_dict[(imgs[i].split('_')[0])]
-        except Exception as e:
 
-            c = label[i]
+            data[j, :, :, :] = arr / 255
+            mean = np.mean(data)
+            data -= mean
+            label[j] = map_dict[type]
+            j += 1
+            label_num[type] += 1
+
+        except Exception as e:
             continue
     return data,label
 
@@ -43,7 +56,6 @@ def split_train_test(path):
         os.mkdir(test_set)
 
     for i in range(kinds):
-        # label = dirs[i]
         if not os.path.isdir(path + dirs[i]):
             continue
         flowers = os.listdir(path + dirs[i])
